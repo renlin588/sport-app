@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智慧运动挑战</title>
+    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script type="text/javascript" src="https://webapi.amap.com/maps?v=2.0&key=6578b7182a260792391a8d7927e689c3"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif}
+        body{background:#f5f7fa}
+        .container{max-width:450px;margin:0 auto;background:#fff;min-height:100vh}
+        .header{background:linear-gradient(135deg,#27ae60,#2ecc71);color:#fff;padding:20px 15px;text-align:center}
+        .header h1{font-size:22px}
+        .header p{font-size:12px;opacity:.9}
+        .user-info{text-align:center;padding:12px;font-size:14px;color:#666}
+
+        .wallet-dropdown{margin:10px;position:relative}
+        .wallet-btn{width:100%;padding:16px;border-radius:12px;border:none;font-size:15px;background:#3498db;color:#fff;display:flex;align-items:center;justify-content:center;gap:8px}
+        .wallet-submenu{display:none;background:#fff;border-radius:12px;margin-top:8px;box-shadow:0 4px 12px rgba(0,0,0,.1);overflow:hidden}
+        .wallet-submenu.show{display:block}
+        .wallet-item{padding:14px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #f1f1f1}
+        .wallet-item:last-child{border-bottom:none}
+        .wallet-label{font-size:14px;color:#666}
+        .wallet-value{font-size:16px;font-weight:bold}
+        .wallet-frozen{color:#e67e22}
+        .wallet-available{color:#27ae60}
+        .wallet-btns{display:flex;gap:10px;padding:12px 16px;border-top:1px solid #f1f1f1}
+        .wallet-btns button{flex:1;padding:10px;border-radius:8px;border:none;font-size:14px}
+        .btn-withdraw{background:#3498db;color:#fff}
+        .btn-record{background:#f1f1f1;color:#333}
+
+        .sport-info{display:flex;justify-content:space-between;padding:15px;background:#fff;margin:10px;border-radius:12px}
+        .sport-item{text-align:center}
+        .sport-value{font-size:18px;font-weight:bold}
+        .sport-label{font-size:12px;color:#999}
+        .pace-warning{color:#e74c3c;font-weight:bold}
+        .pace-normal{color:#27ae60;font-weight:bold}
+
+        #map{width:100%;height:300px;background:#eee}
+
+        .challenge-info{background:#f1f9f7;border-radius:10px;margin:10px;padding:12px;font-size:13px}
+        .btn-group{padding:0 10px}
+        .btn{display:block;width:100%;margin:8px 0;padding:16px;border-radius:12px;border:none;font-size:15px;background:#fff;color:#333}
+        .btn-primary{background:#27ae60;color:#fff}
+        .btn-start{background:#e67e22;color:#fff}
+        .btn-stop{background:#e74c3c;color:#fff}
+        .btn-admin{background:#f39c12;color:#fff;display:none}
+        .btn-logout{background:#e74c3c;color:#fff}
+
+        .modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;padding:20px;z-index:999}
+        .modal-box{background:#fff;border-radius:16px;padding:25px;width:100%;max-width:320px}
+        .modal-title{text-align:center;font-size:18px;margin-bottom:15px}
+        .modal-close{text-align:center;margin-top:15px;color:#27ae60}
+        .amount-option{padding:12px;border:1px solid #eee;border-radius:8px;margin-bottom:8px;text-align:center}
+        .amount-option.active{border-color:#27ae60;background:#f1f9f7}
+        input{width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;margin-top:8px}
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>智慧运动挑战</h1>
+        <p>保证金 · 实时轨迹 · 配速提醒 · 自动结算</p>
+    </div>
+
+    <div class="user-info">欢迎，<span id="nickname"></span></div>
+
+    <div class="wallet-dropdown">
+        <button class="wallet-btn" onclick="toggleWalletSubmenu()">
+            <i class="fa-solid fa-wallet"></i> 我的钱包
+        </button>
+        <div class="wallet-submenu" id="walletSubmenu">
+            <div class="wallet-item">
+                <span class="wallet-label">可提现余额</span>
+                <span class="wallet-value wallet-available" id="balance">¥0.00</span>
+            </div>
+            <div class="wallet-item">
+                <span class="wallet-label">冻结保证金</span>
+                <span class="wallet-value wallet-frozen" id="frozen">¥0.00</span>
+            </div>
+            <div class="wallet-btns">
+                <button class="btn-withdraw" onclick="openWithdraw()">申请提现</button>
+                <button class="btn-record" onclick="showRecords()">提现记录</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="sport-info">
+        <div class="sport-item">
+            <div class="sport-value" id="distance">0.00</div>
+            <div class="sport-label">公里</div>
+        </div>
+        <div class="sport-item">
+            <div class="sport-value" id="duration">00:00</div>
+            <div class="sport-label">时长</div>
+        </div>
+        <div class="sport-item">
+            <div class="sport-value pace-normal" id="pace">0'00''</div>
+            <div class="sport-label">配速</div>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <div class="challenge-info" id="challengeBox" style="display:none">
+        挑战：<span id="cDay"></span>天 | 保证金：<span id="cMoney"></span>元 | 状态：<span id="cState"></span>
+    </div>
+
+    <div class="btn-group">
+        <button class="btn btn-start" onclick="startSport()">开始运动</button>
+        <button class="btn btn-stop" onclick="stopSport()">结束运动</button>
+        <button class="btn btn-primary" onclick="openChallenge()">发起挑战</button>
+        <button class="btn" onclick="openFinish()">结束挑战并结算</button>
+        <button class="btn btn-admin" id="adminBtn">管理员后台</button>
+        <button class="btn btn-logout" onclick="logout()">退出登录</button>
+    </div>
+</div>
+
+<!-- 发起挑战 -->
+<div class="modal" id="challengeModal">
+    <div class="modal-box">
+        <div class="modal-title">发起挑战</div>
+        <div style="margin-bottom:10px">选择保证金：</div>
+        <div class="amount-option" data-amt="20">20 元</div>
+        <div class="amount-option" data-amt="50">50 元</div>
+        <div class="amount-option" data-amt="100">100 元</div>
+        <div style="margin-top:10px">挑战天数（≥7）</div>
+        <input type="number" id="days" placeholder="最少7天" min="7">
+        <button style="width:100%;padding:12px;background:#27ae60;color:#fff;border:none;border-radius:8px;margin-top:15px" onclick="createChallenge()">确认发起</button>
+        <div class="modal-close" onclick="closeAll()">取消</div>
+    </div>
+</div>
+
+<!-- 结算 -->
+<div class="modal" id="finishModal">
+    <div class="modal-box">
+        <div class="modal-title">结束挑战</div>
+        <div id="resultText" style="text-align:center;line-height:1.8;margin-bottom:15px"></div>
+        <button style="width:100%;padding:12px;background:#27ae60;color:#fff;border:none;border-radius:8px" onclick="doSettle()">确认结算</button>
+        <div class="modal-close" onclick="closeAll()">取消</div>
+    </div>
+</div>
+
+<!-- 提现 -->
+<div class="modal" id="withdrawModal">
+    <div class="modal-box">
+        <div class="modal-title">申请提现</div>
+        <input type="number" id="wAmt" placeholder="提现金额">
+        <input style="margin-top:8px" type="text" placeholder="微信/支付宝账号">
+        <button style="width:100%;padding:12px;background:#3498db;color:#fff;border:none;border-radius:8px;margin-top:15px" onclick="withdraw()">提交提现</button>
+        <div class="modal-close" onclick="closeAll()">取消</div>
+    </div>
+</div>
+
+<!-- 管理员 -->
+<div class="modal" id="adminModal">
+    <div class="modal-box">
+        <div class="modal-title">管理员后台</div>
+        <div style="text-align:center;margin-bottom:15px">
+            <div>平台管理费总计</div>
+            <div style="font-size:22px;color:#f39c12;font-weight:bold" id="platformFee">¥0.00</div>
+        </div>
+        <button style="width:100%;padding:12px;background:#f39c12;color:#fff;border:none;border-radius:8px" onclick="adminTake()">提现管理费</button>
+        <div class="modal-close" onclick="closeAll()">关闭</div>
+    </div>
+</div>
+
+<script>
+// ==================== 管理员手机号 ====================
+const ADMIN_PHONE = "13577800902";
+
+// ==================== 全局数据 ====================
+let user = JSON.parse(localStorage.getItem('user')) || { phone: ADMIN_PHONE, name: "创建者" };
+let wallet = JSON.parse(localStorage.getItem('wallet')) || { balance: 0, frozen: 0, records: [] };
+let challenge = JSON.parse(localStorage.getItem('challenge')) || null;
+let platform = JSON.parse(localStorage.getItem('platform')) || { fee: 0 };
+
+let players = [
+    { phone: ADMIN_PHONE, name: "管理员", done: true },
+    { phone: "user1", name: "用户A", done: true },
+    { phone: "user2", name: "用户B", done: false }
+];
+
+// ==================== 运动 ====================
+let map, polyline;
+let isTracking = false;
+let startTime;
+let distance = 0;
+let lastPoint = null;
+let timer = null;
+const MIN_PACE = 7;
+const MAX_PACE = 8;
+
+// ==================== 钱包菜单 ====================
+function toggleWalletSubmenu() {
+    const sub = document.getElementById('walletSubmenu');
+    sub.classList.toggle('show');
+}
+
+document.addEventListener('click', (e) => {
+    const d = document.querySelector('.wallet-dropdown');
+    if (!d.contains(e.target)) {
+        document.getElementById('walletSubmenu').classList.remove('show');
+    }
+});
+
+// ==================== 初始化地图 ====================
+window.onload = function () {
+    initMap();
+    refreshUI();
+    localStorage.setItem('user', JSON.stringify(user));
+};
+
+function initMap() {
+    map = new AMap.Map('map', { zoom: 16 });
+    AMap.plugin('AMap.Geolocation', function () {
+        let geo = new AMap.Geolocation({
+            enableHighAccuracy: true,
+            timeout: 10000
+        });
+        map.addControl(geo);
+        geo.getCurrentPosition();
+    });
+    polyline = new AMap.Polyline({
+        strokeColor: "#3498db",
+        strokeWeight: 6,
+        strokeOpacity: 0.8
+    });
+    polyline.setMap(map);
+}
+
+// ==================== 运动开始/结束 ====================
+function startSport() {
+    if (isTracking) return;
+    isTracking = true;
+    startTime = Date.now();
+    distance = 0;
+    lastPoint = null;
+    timer = setInterval(updateTrack, 1000);
+    alert("运动已开始，实时轨迹已启动");
+}
+
+function stopSport() {
+    if (!isTracking) return;
+    isTracking = false;
+    clearInterval(timer);
+    alert("运动已结束");
+}
+
+// ==================== 实时轨迹 & 配速 ====================
+function updateTrack() {
+    if (!isTracking || !map) return;
+    let pos = map.getCenter();
+    let lat = pos.lat;
+    let lng = pos.lng;
+    let now = Date.now();
+    let durMs = now - startTime;
+    let duration = formatTime(Math.floor(durMs / 1000));
+
+    if (lastPoint) {
+        let d = calculateDistance(lastPoint.lat, lastPoint.lng, lat, lng);
+        distance += d;
+    }
+    lastPoint = { lat, lng };
+
+    let path = polyline.getPath() || [];
+    path.push(new AMap.LngLat(lng, lat));
+    polyline.setPath(path);
+
+    let pace = 0;
+    if (distance > 0.1) {
+        pace = (durMs / 1000 / 60) / distance;
+    }
+
+    document.getElementById('distance').innerText = distance.toFixed(2);
+    document.getElementById('duration').innerText = duration;
+    document.getElementById('pace').innerText = pace.toFixed(1) + "'";
+
+    if (pace < MIN_PACE || pace > MAX_PACE) {
+        document.getElementById('pace').className = "sport-value pace-warning";
+        if (pace < MIN_PACE) alert("配速过快！当前：" + pace.toFixed(1) + "分钟/公里");
+        if (pace > MAX_PACE) alert("配速过慢！当前：" + pace.toFixed(1) + "分钟/公里");
+    } else {
+        document.getElementById('pace').className = "sport-value pace-normal";
+    }
+}
+
+function formatTime(s) {
+    let m = Math.floor(s / 60);
+    let sec = s % 60;
+    return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+}
+
+function calculateDistance(lat1, lng1, lat2, lng2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// ==================== UI刷新 ====================
+function refreshUI() {
+    document.getElementById('nickname').innerText = user.name;
+    document.getElementById('balance').innerText = '¥' + wallet.balance.toFixed(2);
+    document.getElementById('frozen').innerText = '¥' + wallet.frozen.toFixed(2);
+    if (user.phone === ADMIN_PHONE) {
+        document.getElementById('adminBtn').style.display = 'block';
+    }
+}
+
+// ==================== 挑战 ====================
+let selectAmt = 0;
+document.querySelectorAll('.amount-option').forEach(el => {
+    el.onclick = () => {
+        document.querySelectorAll('.amount-option').forEach(e => e.classList.remove('active'));
+        el.classList.add('active');
+        selectAmt = parseFloat(el.dataset.amt);
+    };
+});
+
+function openChallenge() { document.getElementById('challengeModal').style.display = 'flex'; }
+function createChallenge() {
+    const days = parseInt(document.getElementById('days').value);
+    if (selectAmt < 20 || isNaN(days) || days < 7) {
+        alert('保证金20/50/100，天数≥7');
+        return;
+    }
+    wallet.frozen += selectAmt;
+    challenge = { amount: selectAmt, days: days, status: "进行中" };
+    saveAll();
+    closeAll();
+    refreshUI();
+    alert('挑战已发起，保证金已冻结！');
+}
+
+function openFinish() {
+    if (!challenge || challenge.status !== "进行中") {
+        alert('暂无进行中的挑战');
+        return;
+    }
+    const total = challenge.amount;
+    const fee = total * 0.05;
+    const reward = total * 0.95;
+    const finishCount = players.filter(p => p.done).length;
+    let txt = `保证金：${total}元\n平台5%：${fee.toFixed(2)}元\n可分95%：${reward.toFixed(2)}元\n完成：${finishCount}人`;
+    if (finishCount > 0) txt += `\n每人分：${(reward / finishCount).toFixed(2)}元`;
+    document.getElementById('resultText').innerText = txt;
+    document.getElementById('finishModal').style.display = 'flex';
+}
+
+function doSettle() {
+    const total = challenge.amount;
+    const fee = total * 0.05;
+    const reward = total * 0.95;
+    const finishUsers = players.filter(p => p.done);
+    const count = finishUsers.length;
+
+    platform.fee += fee;
+    wallet.frozen -= total;
+
+    if (user.done) {
+        wallet.balance += total;
+    }
+    if (count > 0) {
+        const each = reward / count;
+        finishUsers.forEach(p => {
+            if (p.phone === user.phone) {
+                wallet.balance += each;
+            }
+        });
+    }
+    challenge.status = "已结算";
+    saveAll();
+    closeAll();
+    refreshUI();
+    alert('结算完成！');
+}
+
+// ==================== 提现 ====================
+function openWithdraw() { document.getElementById('withdrawModal').style.display = 'flex'; }
+function withdraw() {
+    const amt = parseFloat(document.getElementById('wAmt').value);
+    if (isNaN(amt) || amt <= 0 || amt > wallet.balance) {
+        alert('提现金额不正确');
+        return;
+    }
+    wallet.balance -= amt;
+    wallet.records.push({ time: new Date().toLocaleString(), amount: amt, state: '待审核' });
+    saveAll();
+    closeAll();
+    alert('提现申请已提交');
+    refreshUI();
+}
+
+function showRecords() {
+    if (wallet.records.length === 0) alert('暂无提现记录');
+    else alert(JSON.stringify(wallet.records, null, 2));
+}
+
+// ==================== 管理员 ====================
+document.getElementById('adminBtn').onclick = () => {
+    document.getElementById('platformFee').innerText = '¥' + platform.fee.toFixed(2);
+    document.getElementById('adminModal').style.display = 'flex';
+};
+
+function adminTake() {
+    if (user.phone !== ADMIN_PHONE) return alert('无权限');
+    if (platform.fee <= 0) return alert('暂无管理费可提现');
+    platform.fee = 0;
+    localStorage.setItem('platform', JSON.stringify(platform));
+    alert('平台提现成功');
+    closeAll();
+}
+
+// ==================== 工具 ====================
+function saveAll() {
+    localStorage.setItem('user', JSON.stringify(user));
+    localStorage.setItem('wallet', JSON.stringify(wallet));
+    localStorage.setItem('challenge', JSON.stringify(challenge));
+    localStorage.setItem('platform', JSON.stringify(platform));
+}
+
+function closeAll() {
+    document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
+}
+
+function logout() {
+    localStorage.clear();
+    location.reload();
+}
+</script>
+</body>
+</html>
+
