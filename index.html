@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>智能运动契约</title>
+<script src="https://web.amap.com/api/js?v=2.0&key=67f819dd2a9f4937b59495652d2b1d74"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,sans-serif}
+body{background:#0B1220;color:#e3e3e0;padding:16px}
+.glass{background:rgba(26,35,54,0.8);backdrop-filter:blur(12px);border:1px solid rgba(130,220,255,0.15);border-radius:20px;padding:22px;margin-bottom:18px}
+.title{font-size:24px;font-weight:700;color:#82FFD2;text-align:center;margin-bottom:6px}
+.subtitle{text-align:center;color:#94a3b0;font-size:13px;margin-bottom:20px}
+h2{font-size:17px;color:#fff;margin-bottom:14px}
+input,select{width:100%;padding:16px;background:rgba(30,40,60,.9);border:1px solid rgba(130,210,255,.2);color:#fff;border-radius:14px;margin-bottom:10px;font-size:15px;outline:0}
+.btn{width:100%;padding:18px;border-radius:16px;border:none;font-size:16px;font-weight:600;margin:8px 0}
+.btn-green{background:linear-gradient(90deg,#00E6B2,#00BB9C);color:#000}
+.btn-blue{background:linear-gradient(90deg,#31CAFF,#639BFF);color:#fff}
+.btn-yellow{background:linear-gradient(90deg,#FFC831,#FF9F1C);color:#000}
+.btn-red{background:linear-gradient(90deg,#FF4560,#D92D20);color:#fff}
+.btn-purple{background:linear-gradient(90deg,#9E57FF,#6F3FFF);color:#fff}
+#map{width:100%;height:280px;border-radius:16px;margin-bottom:12px;border:1px solid rgba(130,210,255,.2)}
+.data-row{display:flex;justify-content:space-around;text-align:center;padding:10px 0;font-size:14px}
+.data-row span{color:#82FFD2;font-weight:bold;font-size:16px}
+.warn{color:#ff5757;font-weight:bold;text-align:center;padding:8px;font-size:14px;display:none}
+.item{padding:14px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+.item strong{color:#82FFD2}
+.balance{color:#31CAFF;font-weight:bold}
+.sponsor-tag{color:#FFC831;font-weight:bold}
+.badge{color:#FFD700;font-weight:bold;font-size:12px;background:rgba(255,215,0,0.15);padding:2px 6px;border-radius:4px;margin-left:4px}
+.invite-code{font-size:18px;color:#FFC831;font-weight:bold;text-align:center;padding:10px 0;}
+.user-info{text-align:center;margin-bottom:16px;color:#82FFD2;font-weight:bold}
+.stat-bar{display:flex;justify-content:space-around;text-align:center;margin-bottom:16px;}
+.stat-item{flex:1}
+.stat-num{font-size:18px;font-weight:bold;color:#82FFD2}
+.stat-label{font-size:12px;color:#a0a0b0}
+.weather-info{text-align:center;color:#FFC831;font-weight:bold;margin-bottom:10px;font-size:15px;}
+</style>
+
+<body>
+<div class="title">智能运动契约</div>
+<div class="subtitle">发起契约 · 邀请好友 · 自律履约</div>
+
+<div class="glass">
+  <div class="stat-bar">
+    <div class="stat-item">
+      <div class="stat-num" id="regCount">0</div>
+      <div class="stat-label">总注册</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num" id="onlineCount">0</div>
+      <div class="stat-label">在线人数</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num" id="userRegion">未知</div>
+      <div class="stat-label">当前地区</div>
+    </div>
+  </div>
+  <div class="weather-info" id="weatherTip">加载天气中...</div>
+  <div class="user-info" id="userInfo">请先注册您的昵称</div>
+</div>
+
+<div class="glass">
+  <h2>👤 注册 / 设置昵称</h2>
+  <input id="regName" placeholder="请输入您的昵称">
+  <input id="regAge" placeholder="年龄（选填）">
+  <select id="regGender">
+    <option value="男">男</option>
+    <option value="女">女</option>
+  </select>
+  <input id="regPhone" placeholder="手机号（选填）">
+  <select id="regCity">
+    <option value="北京">北京</option>
+    <option value="上海">上海</option>
+    <option value="广州">广州</option>
+    <option value="深圳">深圳</option>
+    <option value="成都">成都</option>
+    <option value="重庆">重庆</option>
+    <option value="昆明">昆明</option>
+    <option value="楚雄">楚雄</option>
+    <option value="宿州">宿州</option>
+    <option value="其他">其他</option>
+  </select>
+  <button class="btn btn-green" onclick="register()">✅ 完成注册</button>
+</div>
+
+<div class="glass">
+  <h2>🗺️ 实时运动数据</h2>
+  <div id="map"></div>
+  <button class="btn btn-green" onclick="startTrack()">▶️ 开始运动</button>
+  <button class="btn btn-yellow" onclick="stopTrack()">⏹️ 结束运动</button>
+  <div class="data-row">
+    <div>距离<br><span id="distance">0.00</span> km</div>
+    <div>配速<br><span id="pace">0'0"</span> /km</div>
+    <div>卡路里<br><span id="calorie">0</span> kcal</div>
+  </div>
+  <div id="paceWarn" class="warn">⚠️ 运动强度过高，请减速</div>
+</div>
+
+<div class="glass">
+  <h2>📋 发起履约契约</h2>
+  <input id="title" placeholder="契约名称" value="每日运动履约">
+  <select id="periodDays">
+    <option value="7">周期：7天</option>
+    <option value="14">周期：14天</option>
+    <option value="21">周期：21天</option>
+    <option value="30">周期：30天</option>
+  </select>
+  <select id="runTimeSlot">
+    <option value="全天">时段：全天</option>
+    <option value="早上">早上（06:00-10:00）</option>
+    <option value="中午">中午（10:00-15:00）</option>
+    <option value="晚上">晚上（18:00-23:00）</option>
+  </select>
+  <select id="targetKm">
+    <option value="1.0">目标：1.0 km</option>
+    <option value="2.0">目标：2.0 km</option>
+    <option value="3.0">目标：3.0 km</option>
+    <option value="5.0">目标：5.0 km</option>
+  </select>
+
+  <select id="dailyDeposit">
+    <option value="20">每日保证金：20 元</option>
+    <option value="50">每日保证金：50 元</option>
+    <option value="100">每日保证金：100 元</option>
+  </select>
+
+  <button class="btn btn-green" onclick="createContract()">✅ 发起契约 & 生成邀请码</button>
+  <div id="inviteArea" style="display:none;">
+    <div class="invite-code">邀请码：<span id="codeText"></span></div>
+  </div>
+</div>
+
+<div class="glass">
+  <h2>🤝 加入契约</h2>
+  <input id="joinCode" placeholder="输入邀请码">
+  <button class="btn btn-blue" onclick="joinByCode()">✅ 加入契约</button>
+</div>
+
+<div class="glass">
+  <h2>✅ 完成当日履约</h2>
+  <button class="btn btn-yellow" onclick="finishSport()">🏅 确认完成今日打卡</button>
+</div>
+
+<div class="glass">
+  <h2>💸 微信提现</h2>
+  <input id="wxAccount" placeholder="微信收款账号">
+  <button class="btn btn-purple" onclick="withdraw()">✅ 申请提现</button>
+</div>
+
+<div class="glass">
+  <h2>📊 履约进度</h2>
+  <div id="list"></div>
+</div>
+
+<button class="btn btn-red" onclick="doSettle()">🏆 结束契约 · 智能结算</button>
+
+<script>
+let map,pathLine,watchId,tracking=false,points=[]
+let contract=null
+let users={},platformIncome=0
+
+let stat = { regUsers: [], onlineUsers: [] }
+
+let currentUser = {
+  name:"", age:"", gender:"", phone:"", city:"",
+  badgeCount: 0  // 邀请徽章数量
+}
+
+// 天气
+function showWeather() {
+  const list = ["☀️ 晴朗，适合户外运动","⛅ 多云，温度适宜","🌧️ 有雨，建议室内运动","💨 大风，注意安全","🌫️ 雾霾，减少户外","❄️ 凉爽，跑步舒适"]
+  const txt = list[Math.floor(Math.random()*list.length)]
+  document.getElementById("weatherTip").innerText = "今日天气："+txt
+  return txt
+}
+
+// 统计
+function refreshStat(){
+  document.getElementById("regCount").innerText = stat.regUsers.length
+  document.getElementById("onlineCount").innerText = stat.onlineUsers.length
+  document.getElementById("userRegion").innerText = currentUser.city || "未设置"
+}
+
+// 注册
+function register(){
+  let name = document.getElementById("regName").value.trim()
+  if(!name){alert("请输入昵称");return}
+  currentUser.name = name
+  currentUser.age = document.getElementById("regAge").value.trim()
+  currentUser.gender = document.getElementById("regGender").value
+  currentUser.phone = document.getElementById("regPhone").value.trim()
+  currentUser.city = document.getElementById("regCity").value
+  currentUser.badgeCount = 0
+  if(!stat.regUsers.includes(name)) stat.regUsers.push(name)
+  if(!stat.onlineUsers.includes(name)) stat.onlineUsers.push(name)
+  document.getElementById("userInfo").innerText = "当前用户："+name
+  refreshStat()
+  alert("注册成功！")
+}
+
+window.onload=()=>{
+  map=new AMap.Map("map",{zoom:16})
+  pathLine=new AMap.Polyline({map,strokeColor:"#00E6B2",strokeWeight:5})
+  showWeather()
+  refreshStat()
+  refresh()
+}
+
+// 开始运动（带天气提醒）
+function startTrack(){
+  if(tracking)return
+  const w = showWeather()
+  alert("运动前提醒：\n"+w+"\n请注意安全！")
+  tracking=true;points=[]
+  watchId=navigator.geolocation.watchPosition(p=>{
+    let pt=[p.coords.longitude,p.coords.latitude]
+    points.push({lnglat:pt,time:new Date()})
+    pathLine.setPath(points.map(x=>x.lnglat))
+    map.setCenter(pt)
+    updateInfo()
+  })
+}
+function stopTrack(){
+  tracking=false;navigator.geolocation.clearWatch(watchId)
+  document.getElementById("paceWarn").style.display="none"
+  alert("运动已结束")
+}
+function updateInfo(){
+  if(points.length<2){
+    document.getElementById("distance").innerText="0.00"
+    document.getElementById("pace").innerText="0'0\""
+    document.getElementById("calorie").innerText="0"
+    return
+  }
+  let dis=0
+  for(let i=1;i<points.length;i++)dis+=AMap.GeometryUtil.distance(points[i-1].lnglat,points[i].lnglat)
+  let km=dis/1000,t=(points[points.length-1].time-points[0].time)/60000,pace=km>0?t/km:0
+  let m=Math.floor(pace),s=Math.round((pace-m)*60)
+  document.getElementById("distance").innerText=km.toFixed(2)
+  document.getElementById("pace").innerText=m+"'"+s.toString().padStart(2,0)+'"'
+  document.getElementById("calorie").innerText=Math.round(km*60)
+  document.getElementById("paceWarn").style.display=pace<7?"block":"none"
+}
+
+// 发起契约
+function createContract(){
+  if(!currentUser.name){alert("请先注册");return}
+  let title = document.getElementById("title").value.trim()
+  let days = +document.getElementById("periodDays").value
+  let timeSlot = document.getElementById("runTimeSlot").value
+  let targetKm = +document.getElementById("targetKm").value
+  let dailyDeposit = +document.getElementById("dailyDeposit").value
+
+  if(!title){alert("请输入契约名称");return}
+  let code = Math.floor(100000+Math.random()*900000).toString()
+
+  contract={
+    sponsor:currentUser.name,
+    title:title,
+    days:days,
+    timeSlot:timeSlot,
+    targetKm:targetKm,
+    dailyDeposit:dailyDeposit,
+    totalDeposit:dailyDeposit * days,
+    code:code,
+    city:currentUser.city
+  }
+
+  users={}
+  users[currentUser.name]={
+    balance:0, done:0, deposit:contract.totalDeposit,
+    age:currentUser.age, gender:currentUser.gender, phone:currentUser.phone, city:currentUser.city,
+    badgeCount: currentUser.badgeCount
+  }
+
+  document.getElementById("codeText").innerText=code
+  document.getElementById("inviteArea").style.display="block"
+  refresh()
+  alert(`契约发起成功！
+发起人：${currentUser.name}
+每日保证金：${dailyDeposit} 元
+邀请码：${code}`)
+}
+
+// 加入契约 → 给发起人 +1 枚邀请徽章
+function joinByCode(){
+  if(!currentUser.name){alert("请先注册");return}
+  let code=document.getElementById("joinCode").value.trim()
+  if(!code || !contract || contract.code!=code){alert("邀请码错误");return}
+  if(users[currentUser.name]){alert("已加入");return}
+
+  users[currentUser.name]={
+    balance:0, done:0, deposit:contract.totalDeposit,
+    age:currentUser.age, gender:currentUser.gender, phone:currentUser.phone, city:currentUser.city,
+    badgeCount: currentUser.badgeCount
+  }
+  
+  // 给发起人增加邀请徽章
+  if(users[contract.sponsor]){
+    users[contract.sponsor].badgeCount = (users[contract.sponsor].badgeCount || 0) + 1
+  }
+
+  refresh()
+  alert("加入成功！\n已为发起人赠送 1 枚邀请徽章～")
+}
+
+// 完成履约
+function finishSport(){
+  if(!currentUser.name){alert("请先注册");return}
+  let name=currentUser.name
+  if(!users[name]){alert("未加入契约");return}
+  if(users[name].deposit <= 0){alert("已完成全部履约");return}
+
+  users[name].done++
+  users[name].deposit -= contract.dailyDeposit
+  if(users[name].deposit<0) users[name].deposit=0
+  refresh()
+  alert(`打卡进度100%，${contract.dailyDeposit} 元履约金已解锁。`)
+}
+
+// 提现
+function withdraw(){
+  if(!currentUser.name){alert("请先注册");return}
+  let wx=document.getElementById("wxAccount").value.trim()
+  if(!wx){alert("请输入微信账号");return}
+  let u=users[currentUser.name]
+  if(!u || u.balance<=0){alert("暂无可提现余额");return}
+  alert(`提现申请已提交
+用户：${currentUser.name}（${currentUser.city}）
+微信：${wx}
+金额：${u.balance.toFixed(2)}元`)
+  u.balance=0
+  refresh()
+}
+
+// 列表刷新
+function refresh(){
+  refreshStat()
+  if(!contract){
+    document.getElementById("list").innerHTML="<div class='item'>请先发起或加入契约</div>"
+    return
+  }
+  let html=`
+  <div class='item'>
+    发起人：${contract.sponsor}｜地区：${contract.city}<br>
+    邀请码：${contract.code}<br>
+    时段：${contract.timeSlot}｜目标：${contract.targetKm}km<br>
+    周期：${contract.days}天｜每日履约金：${contract.dailyDeposit}元
+  </div>`
+  for(let n in users){
+    let u=users[n]
+    let tag = n==contract.sponsor ? "<span class='sponsor-tag'>【发起人】</span>":""
+    let badgeHtml = u.badgeCount > 0 ? `<span class='badge'>邀请徽章 ×${u.badgeCount}</span>` : ""
+    html+=`<div class="item">
+      <strong>${n} ${tag}</strong>${badgeHtml}<br>
+      地区：${u.city}<br>
+      已完成：${u.done}/${contract.days}天<br>
+      保证金剩余：${u.deposit}元<br>
+      可提现：<span class="balance">${u.balance.toFixed(2)}</span>元
+    </div>`
+  }
+  document.getElementById("list").innerHTML=html
+}
+
+// 结算
+function doSettle(){
+  if(!contract){alert("未创建契约");return}
+  let total=0, winners=[]
+  for(let n in users){
+    total+=users[n].deposit
+    if(users[n].done>=contract.days) winners.push(n)
+  }
+  let fee=total*0.05
+  let pool=total-fee
+  winners.forEach(n=>{users[n].balance += pool/winners.length})
+  alert(`【${contract.title}】结算完成
+总保证金：${total}元
+平台5%服务费：${fee.toFixed(2)}元
+可分奖金：${pool.toFixed(2)}元
+达标人数：${winners.length}人`)
+  refresh()
+}
+</script>
+</body>
+</html>
+
